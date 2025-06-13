@@ -1,4 +1,6 @@
 mod account;
+mod menu;
+
 use crate::account::Accounts;
 use std::io::{self, Write};
 fn read_input(prompt: &str) -> String {
@@ -13,11 +15,7 @@ fn main() {
     println!("🏦 Welcome to Rust Bank CLI!");
     let mut accounts = Accounts::new();
     loop {
-        println!("\n====== 💳 BANKING CLI MENU ======");
-        println!("1️⃣  Create Account");
-        println!("2️⃣  Show Account Details");
-        println!("3️⃣  🚪 Exit");
-        println!("==================================");
+        menu::display_menu();
 
         let choice = read_input("Enter your choice: ");
 
@@ -25,7 +23,18 @@ fn main() {
             "1" => {
                 let name = read_input("Enter account holder's name: ");
                 let email = read_input("Enter email address: ");
-                let phone: u32 = read_input("Enter phone number: ").parse().unwrap_or(0);
+
+                let phone: String = loop {
+                    let input = read_input("Enter phone number: ");
+                    if !input.chars().all(|c| c.is_numeric()) {
+                        println!("⚠️ Invalid phone number. Try again.");
+                        continue;
+                    }
+                    break input;
+                };
+
+                let phone: u64 = phone.parse().unwrap_or(0);
+
                 let address = read_input("Enter address: ");
                 accounts.create_new_account(&name, &email, phone, &address);
             }
@@ -33,6 +42,36 @@ fn main() {
                 accounts.show_account_details();
             }
             "3" => {
+               let account_id = read_input("Enter the Account ID : ");
+                accounts.show_transactions(&account_id);
+            }
+            "4" => {
+                let account_id = read_input( "Enter the Account ID to show balance: ");
+                accounts.show_balance(&account_id);
+            }
+            "5" => {
+                let account_id = read_input("Enter the Account ID to deposit: ");
+                let amount: f64 = loop {
+                    let input = read_input("Enter amount to deposit: ");
+                    match input.parse::<f64>() {
+                        Ok(num) if num > 0.0 => break num,
+                        _ => println!("⚠️ Invalid amount. Please enter a positive number."),
+                    }
+                };
+                accounts.deposit(&account_id, amount);
+            }
+            "6" => {
+                let account_id = read_input("Enter the Account ID to withdraw: ");
+                let amount: f64 = loop {
+                    let input = read_input("Enter amount to withdraw: ");
+                    match input.parse::<f64>() {
+                        Ok(num) if num > 0.0 => break num,
+                        _ => println!("⚠️ Invalid amount. Please enter a positive number."),
+                    }
+                };
+                accounts.withdraw(&account_id, amount);
+            }
+            "7" => {
                 println!("Exiting...");
                 break;
             }
