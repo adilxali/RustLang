@@ -1,0 +1,32 @@
+# Ignore target folders in all nested projects
+**/target/
+
+# Ignore Cargo.lock in libraries; keep for binaries
+# (optional: if you’re mostly writing binaries, comment out the next line)
+**/Cargo.lock
+
+# Ignore common build artifacts
+**/*.rlib
+**/*.dSYM/
+**/*.exe
+**/*.dll
+**/*.so
+**/*.dylib
+
+# IDEs and editors
+**/.idea/
+**/.vscode/
+*.swp
+*.bak
+*.tmp
+*.log
+
+# macOS & Windows system files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.old
+*.orig
+*.bk
+.env

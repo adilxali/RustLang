@@ -72,6 +72,26 @@ fn main() {
                 accounts.withdraw(&account_id, amount);
             }
             "7" => {
+                let from_account_id = read_input("Enter the sender's Account ID: ");
+                if !accounts.check_account_exists(&from_account_id) {
+                    println!("⚠️ Account with ID {} not found.", from_account_id);
+                    continue;
+                }
+                let to_account_id = read_input("Enter the receiver's Account ID: ");
+                if !accounts.check_account_exists(&to_account_id) {
+                    println!("⚠️ Account with ID {} not found.", to_account_id);
+                    continue;
+                }
+                let amount: f64 = loop {
+                    let input = read_input("Enter amount to transfer: ");
+                    match input.parse::<f64>() {
+                        Ok(num) if num > 0.0 => break num,
+                        _ => println!("⚠️ Invalid amount. Please enter a positive number."),
+                    }
+                };
+                accounts.transfer_funds(&from_account_id, &to_account_id, amount);
+            }
+            "8" => {
                 println!("Exiting...");
                 break;
             }

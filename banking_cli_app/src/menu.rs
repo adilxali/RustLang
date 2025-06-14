@@ -6,6 +6,7 @@ pub fn display_menu() {
     println!("4️⃣  Show Balance");
     println!("5️⃣  Deposit");
     println!("6️⃣  Withdraw");
-    println!("7️⃣  🚪 Exit");
+    println!("7️⃣  Transfer Funds");
+    println!("8️⃣  🚪 Exit");
     println!("==============================");
 }
