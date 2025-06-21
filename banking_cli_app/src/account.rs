@@ -1,19 +1,20 @@
-#[derive(Debug)]
-
+use crate::storage::{load_json, save_json};
+use serde::{Serialize, Deserialize};
+#[derive(Serialize, Deserialize, Debug)]
 pub enum TransactionType {
     Deposit,
     Withdraw,
     TransferIn(String),  // TransferIn includes the account ID of the sender
     TransferOut(String), // TransferOut includes the account ID of the receiver
 }
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Transaction {
     pub account_id: String,
     pub transaction_type: TransactionType,
     pub amount: f64,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Account {
     pub id: String,
     pub name: String,
@@ -24,15 +25,27 @@ pub struct Account {
     pub transactions: Vec<Transaction>,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Accounts {
-    pub account: Vec<Account>,
+    pub account: Vec<Account>
 }
 
 impl Accounts {
     pub fn new() -> Self {
         Self {
             account: Vec::new(),
+        }
+    }
+
+    pub fn load_from_file(path:&str)->Self{
+        load_json(path).unwrap_or_else(|_| Accounts {
+            account: Vec::new(),
+        })
+    }
+
+    pub fn save_to_file(&mut self, path :&str) {
+        if let Err(e) = save_json(path, self){
+            eprintln!("Error saving account: {}", e);
         }
     }
 
@@ -52,6 +65,7 @@ impl Accounts {
             transactions: Vec::new(),
         };
         self.account.push(account);
+        self.save_to_file("./jsons/accounts.json");
         println!(
             "Account created successfully with ID: {}",
             self.account.last().unwrap().id
@@ -149,7 +163,8 @@ impl Accounts {
     }
 
     pub fn show_balance(&self, account_id: &str) {
-        if let Some(account) = self.account.iter().find(|acc| acc.id == account_id) {
+        let accounts:Accounts = load_json("./jsons/accounts.json").expect("Accounts not found");
+        if let Some(account) = accounts.account.iter().find(|acc| acc.id == account_id) {
             println!(
                 "Balance for account ID {}: ${:.2}",
                 account.id, account.balance
@@ -179,7 +194,10 @@ impl Accounts {
                 "Transaction of type {:?} for ${} created for account ID: {}",
                 transaction.transaction_type, transaction.amount, transaction.account_id
             );
+
             account.transactions.push(transaction);
+            let transactions = &account.transactions;
+            save_json("./jsons/transactions.json", &transactions).unwrap();
         }
     }
 
@@ -196,7 +214,7 @@ impl Accounts {
             println!("⚠️ To account ID {} does not exist.", to_account_id);
             return;
         }
-        if let Some(from_account) = self.account.iter().find(|acc| acc.id == from_account_id) {
+        if let Some(from_account) = self.account.iter_mut().find(|acc| acc.id == from_account_id) {
             if from_account.balance < amount {
                 println!(
                     "⚠️ Insufficient balance in account ID {} for transfer.",

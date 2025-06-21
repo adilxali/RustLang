@@ -1,0 +1,12 @@
+[
+  {
+    "account_id": "7078624734",
+    "transaction_type": "Deposit",
+    "amount": 3000.0
+  },
+  {
+    "account_id": "7078624734",
+    "transaction_type": "Withdraw",
+    "amount": 200.0
+  }
+]

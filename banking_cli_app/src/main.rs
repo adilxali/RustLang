@@ -1,5 +1,6 @@
 mod account;
 mod menu;
+mod storage;
 
 use crate::account::Accounts;
 use std::io::{self, Write};
