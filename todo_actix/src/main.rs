@@ -30,6 +30,8 @@ async fn create_todo(db_pool: web::Data<DbPool>, item:web::Json<NewTodo>) -> imp
         return HttpResponse::BadRequest().json(serde_json::json!({"error": "Task cannot be empty"}));
     }
 
+
+
     let mut conn = db_pool.get().expect("Failed to get connection from pool");
 
     let new_todo = NewTodo {
@@ -47,6 +49,11 @@ async fn create_todo(db_pool: web::Data<DbPool>, item:web::Json<NewTodo>) -> imp
 }
 
 async  fn update_todo(db_pool: web::Data<DbPool>, todo_id:web::Path<i32>,item:web::Json<UpdateTodo>) -> impl Responder {
+   if let Some(task_item ) = &item.task {
+       if task_item.trim().is_empty() {
+           return HttpResponse::BadRequest().json(serde_json::json!({"error": "Task cannot be empty"}));
+       }
+   }
     let mut conn = db_pool.get().expect("Failed to get connection from pool");
 
     let update_todo = diesel::update(todos.find(todo_id.into_inner()))
@@ -77,6 +84,21 @@ async fn delete_todo(db_pool: web::Data<DbPool>, todo_id: web::Path<i32>) -> imp
     }
 }
 
+async fn get_todo_by_id(db_pool: web::Data<DbPool>, todo_id: web::Path<i32>) -> impl Responder {
+    let mut conn = db_pool.get().expect("Failed to get connection from pool");
+    let todo: Result<Todo, diesel::result::Error> = todos
+        .find(todo_id.into_inner())
+    .first(&mut conn);
+
+    match todo {
+        Ok(todo) => HttpResponse::Ok().json(todo),
+        Err(diesel::result::Error::NotFound) => {
+            HttpResponse::NotFound().json(serde_json::json!({"error": "Task not found"}))
+        }
+        Err(_) => HttpResponse::InternalServerError().json(serde_json::json!({"error": "Internal Server Error"})),
+    }
+}
+
 #[actix_web::main]
 async fn main()-> std::io::Result<()> {
 
@@ -98,6 +120,7 @@ async fn main()-> std::io::Result<()> {
             .route("/todos", web::post().to(create_todo))
             .route("/todos/{id}", web::put().to(update_todo))
             .route("/todos/{id}", web::delete().to(delete_todo))
+            .route("/todos/{id}", web::get().to(get_todo_by_id))
     })
         .bind("127.0.0.1:8080")?
         .run().await
