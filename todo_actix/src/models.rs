@@ -22,3 +22,18 @@ pub struct UpdateTodo {
     pub task: Option<String>,
     pub completed: Option<bool>,
 }
+
+#[derive(Queryable, Selectable,Serialize, Deserialize)]
+#[diesel(table_name = crate::schema::users)]
+pub struct User {
+    pub id: i32,
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Insertable, Deserialize, Serialize)]
+#[diesel(table_name = crate::schema::users)]
+pub struct NewUser {
+    pub username: String,
+    pub password: String,
+}

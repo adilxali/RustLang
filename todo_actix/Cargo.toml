@@ -9,3 +9,10 @@ diesel = { version = "2.1", features = ["postgres", "r2d2"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 dotenv = "0.15"
+jsonwebtoken = "9.3.1" # For JWT
+bcrypt = "0.17"      # For password hashing
+chrono = "0.4"       # For JWT expiration
+env_logger = "0.11.8"              # For logging
+log = "0.4"                      # Logging framework
+#actix-web-rate-limiter = "0.2"   # For rate limiting
+redis = "0.32.2"                   # Redis for rate limiting storage
