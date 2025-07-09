@@ -1,6 +1,6 @@
-use actix_web::{ web,App,HttpResponse, HttpServer, Responder, dev::{ServiceResponse, ServiceRequest} , middleware::{
-    ErrorHandlers, ErrorHandlerResponse
-} , HttpMessage, body::MessageBody, Error, Result };
+use actix_web::{ web,App,HttpResponse, HttpServer, Responder, dev::{ ServiceRequest} , middleware::{
+} , HttpMessage, Error };
+use actix_web::body::MessageBody;
 use::actix_web::middleware::{Next};
 use diesel::pg::PgConnection;
 use diesel::r2d2::{self,ConnectionManager};
@@ -8,18 +8,18 @@ use dotenv::dotenv;
 use std::env;
 use serde::{ Deserialize};
 use serde::Serialize;
+use crate::middleware::JWTMiddleware;
+use actix_web::middleware::Logger;
+// use env_logger::Logger;
 mod models;
 mod schema;
-use crate::models::{Todo, NewTodo, UpdateTodo, User};
+use crate::models::{Todo, NewTodo, UpdateTodo, User, NewUser};
 use crate::schema::todos::dsl::*;
 use crate::schema::users::dsl::*;
 use diesel::{RunQueryDsl, QueryDsl, SelectableHelper}; // for data and filter
 // use diesel::{RunQueryDsl};
 use diesel::ExpressionMethods; // for filter use
-
-// jwt token and encryption and expiration
-
-use jsonwebtoken::{encode, decode, Header, EncodingKey, DecodingKey, Validation};
+use jsonwebtoken::{encode,  Header, EncodingKey};
 use chrono::{Utc, Duration};
 use bcrypt::{hash, verify, DEFAULT_COST};
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
@@ -46,51 +46,11 @@ struct LoginRequest {
     password: String,
 }
 
-// In_memory user store
-// fn get_users() -> HashMap<String, String> {
-//     let mut users = HashMap::new();
-//     users.insert(
-//         "admin".to_string(),
-//         hash("password123", DEFAULT_COST).expect("Failed to hash password123"),
-//     );
-//     users
-//
-// }
-
-// JWT Middleware
-
-async fn jwt_middleware<T>(
-    req:ServiceRequest,
-    next: Next<impl MessageBody>
-) -> Result<ServiceRequest,Error> {
-    let auth_header = req.headers().get("Authorization");
-    if let Some(auth_header) = auth_header {
-        if let Ok(auth_str) = auth_header.to_str() {
-            if auth_str.starts_with("Bearer") {
-                let token = auth_str.trim_start_matches("Bearer");
-                let key= env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-                let validation = Validation::default();
-                match decode::<Claims>(
-                    token,
-                    &DecodingKey::from_secret(&key.as_bytes()),
-                    &validation,
-                ){
-                    Ok(token_data) => {
-                        req.extensions_mut().insert(token_data.claims);
-                        let _ = next.call(req).await;
-                    }
-                    Err(_) => {}
-                }
-            }
-
-        }
-
-    }
-    Err(actix_web::error::ErrorUnauthorized(serde_json::json!({
-                "error": "token expired",
-            })))
+#[derive(Deserialize)]
+struct RegisterRequest {
+    username: String,
+    password: String,
 }
-
 
 async fn health() -> impl Responder {
     HttpResponse::Ok().json(serde_json::json!({"status": "healthy!!!" , "message": "Server is running!"}))
@@ -132,31 +92,38 @@ async fn login(pool: web::Data<DbPool>,cred:web::Json<LoginRequest>) -> impl Res
             }))
         }
     }
-
-    // if let Some(hashed_password) = users.get(&cred.username) {
-    //     if verify(&cred.password, hashed_password).unwrap_or(false) {
-    //         let key = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-    //         let claims = Claims {
-    //             sub : cred.username.clone(),
-    //             exp : (Utc::now() + Duration::hours(1)).timestamp(),
-    //         };
-    //         let token = encode(
-    //             &Header::default(),
-    //             &claims,
-    //             &EncodingKey::from_secret(key.as_ref()),
-    //         )
-    //             .expect("Failed to generate token");
-    //         return HttpResponse::Ok().json(serde_json::json!(
-    //             {
-    //                 "status": "success",
-    //                 "token": token
-    //             }
-    //         ));
-    //     }
-    // }
     HttpResponse::Unauthorized().json(serde_json::json!({
         "error": "Invalid credentials",
     }))
+}
+
+async fn register(db_pool:web::Data<DbPool>, creds:web::Json<RegisterRequest>) -> impl Responder{
+    if creds.username.trim().is_empty() || creds.password.trim().is_empty() {
+        return HttpResponse::BadRequest().json(serde_json::json!({"error": "Username and password cannot be empty"}));
+    }
+
+    let mut conn = db_pool.get().expect("Failed to get DB Connection");
+    let user_exists = users.filter(username.eq(&creds.username)).first::<User>(&mut conn);
+    if user_exists.is_ok() {
+        return HttpResponse::BadRequest().json(serde_json::json!({"error": "Username already exists"}));
+    };
+    let hashes_password = hash(&creds.password, DEFAULT_COST).expect("Failed to hash password");
+    let new_user = NewUser {
+        username: creds.username.clone(),
+        password: hashes_password,
+    };
+    let inserted_user = diesel::insert_into(users)
+        .values(&new_user)
+        .returning(User::as_returning())
+        .get_result(&mut conn)
+        .expect("Error inserting user");
+    HttpResponse::Created().json(serde_json::json!(
+        {
+            "status": "success",
+            "user": inserted_user,
+            "message":"User created successfully"
+        }
+    ))
 }
 
 async fn get_todos(db_pool: web::Data<DbPool>, query : web::Query<TodoFilter>) -> impl Responder {
@@ -274,6 +241,8 @@ async fn main()-> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(_pool.clone()))
+            .wrap(Logger::default())  // Optional: for logging HTTP requests
+            .wrap(JWTMiddleware)      // Add the JWT middleware here
             .route("/healthy", web::get().to(health))
             .route("/todos", web::get().to(get_todos))
             .route("/todos", web::post().to(create_todo))
@@ -281,6 +250,9 @@ async fn main()-> std::io::Result<()> {
             .route("/todos/{id}", web::delete().to(delete_todo))
             .route("/todos/{id}", web::get().to(get_todo_by_id))
             .route("/login", web::post().to(login))
+            .route("/register", web::post().to(register))
+
+
     })
         .bind("127.0.0.1:8080")?
         .run().await

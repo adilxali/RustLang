@@ -1,5 +1,5 @@
 [package]
-name = "todo_actix"
+name = "backend"
 version = "0.1.0"
 edition = "2024"
 
@@ -16,4 +16,4 @@ chrono = "0.4"       # For JWT expiration
 env_logger = "0.11.8"              # For logging
 log = "0.4"                      # Logging framework
 #actix-web-rate-limiter = "0.2"   # For rate limiting
-redis = "0.32.2"                   # Redis for rate limiting storage
+redis = "0.32.2"

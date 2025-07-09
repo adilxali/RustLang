@@ -1,0 +1,5 @@
+-- Your SQL goes here
+ALTER TABLE users
+ADD COLUMN name VARCHAR(255),
+ADD COLUMN email VARCHAR(255);
+

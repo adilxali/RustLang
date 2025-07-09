@@ -1,6 +1,6 @@
 # Ignore target folders in all nested projects
 **/target/
-
+**/node_modules/
 # Ignore Cargo.lock in libraries; keep for binaries
 # (optional: if you’re mostly writing binaries, comment out the next line)
 **/Cargo.lock
